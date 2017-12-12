@@ -8,13 +8,16 @@ function createWebpackMiddleware(compiler, publicPath) {
     noInfo: true,
     publicPath,
     silent: true,
-    stats: 'errors-only',
+    stats: 'errors-only'
   });
 }
 
 module.exports = function addDevMiddlewares(app, webpackConfig) {
   const compiler = webpack(webpackConfig);
-  const middleware = createWebpackMiddleware(compiler, webpackConfig.output.publicPath);
+  const middleware = createWebpackMiddleware(
+    compiler,
+    webpackConfig.output.publicPath
+  );
 
   app.use(middleware);
   app.use(webpackHotMiddleware(compiler));

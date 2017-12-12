@@ -1,46 +1,38 @@
-/* eslint consistent-return:0 */
+import express from 'express';
+import { createServer } from 'http';
+import dotenv from 'dotenv';
+import { resolve } from 'path';
 
-const express = require('express');
-const logger = require('./logger');
+import logger from './config/logger';
+import setup from './middlewares/frontendMiddleware';
+import setupNodered from './middlewares/setupNodered';
+import setupMqtt from './middlewares/setupMQTT';
+import setupGraphql from './middlewares/setupGraphQL';
 
-const argv = require('./argv');
-const port = require('./port');
-const setup = require('./middlewares/frontendMiddleware');
-const isDev = process.env.NODE_ENV !== 'production';
-const ngrok = (isDev && process.env.ENABLE_TUNNEL) || argv.tunnel ? require('ngrok') : false;
-const resolve = require('path').resolve;
+dotenv.config({ path: `${__dirname}/.env` });
+
+const port = parseInt(process.env.PORT || '3000', 10);
+
 const app = express();
+const server = createServer(app);
 
-// If you need a backend, e.g. an API, add your custom backend-specific middleware here
-// app.use('/api', myApi);
+if (/true/i.test(process.env.NODERED_SERVER)) {
+  setupNodered(server, app);
+}
 
-// In production we need to pass these values in instead of relying on webpack
+if (/true/i.test(process.env.MQTT_SERVER)) {
+  setupMqtt();
+}
+
+if (/true/i.test(process.env.GRAPHQL_SERVER)) {
+  setupGraphql(app);
+}
+
 setup(app, {
   outputPath: resolve(process.cwd(), 'build'),
-  publicPath: '/',
+  publicPath: '/'
 });
 
-// get the intended host and port number, use localhost and port 3000 if not provided
-const customHost = argv.host || process.env.HOST;
-const host = customHost || null; // Let http.Server use its default IPv6/4 host
-const prettyHost = customHost || 'localhost';
-
-// Start your app.
-app.listen(port, host, (err) => {
-  if (err) {
-    return logger.error(err.message);
-  }
-
-  // Connect to ngrok in dev mode
-  if (ngrok) {
-    ngrok.connect(port, (innerErr, url) => {
-      if (innerErr) {
-        return logger.error(innerErr);
-      }
-
-      logger.appStarted(port, prettyHost, url);
-    });
-  } else {
-    logger.appStarted(port, prettyHost);
-  }
+server.listen(port, () => {
+  logger.info(`App Api listening on port ${port}!`);
 });
